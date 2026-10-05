@@ -55,6 +55,7 @@ import com.google.errorprone.matchers.Description;
 import com.google.errorprone.util.ASTHelpers;
 import com.google.errorprone.util.ErrorProneComment;
 import com.google.errorprone.util.Reachability;
+import com.google.errorprone.util.Reachability.CanCompleteNormallyPatch;
 import com.google.errorprone.util.SourceVersion;
 import com.sun.source.tree.BinaryTree;
 import com.sun.source.tree.BindingPatternTree;
@@ -643,8 +644,7 @@ public final class IfChainToSwitch extends BugChecker implements IfTreeMatcher {
               .filter(
                   caseIr ->
                       caseIr.arrowRhsOptional().isPresent()
-                          && Reachability.canCompleteNormally(
-                              caseIr.arrowRhsOptional().get(), ImmutableMap.of()))
+                          && Reachability.canCompleteNormally(caseIr.arrowRhsOptional().get()))
               .count();
 
       // javac treats a switch as exhaustive only if it has a `default` or is enhanced (JLS 21
@@ -682,7 +682,10 @@ public final class IfChainToSwitch extends BugChecker implements IfTreeMatcher {
             boolean nextStatementReachable =
                 Reachability.canCompleteNormally(
                     statements.get(indexInBlock),
-                    ImmutableMap.of(cannotCompleteNormallyTree, false));
+                    ImmutableMap.of(
+                        cannotCompleteNormallyTree,
+                        new CanCompleteNormallyPatch(
+                            /* analyzeInside= */ false, /* canCompleteNormally= */ false)));
             // If we continue to the ancestor statement block, it will be because the end of this
             // statement block is not reachable
             cannotCompleteNormallyTree = blockTree;
