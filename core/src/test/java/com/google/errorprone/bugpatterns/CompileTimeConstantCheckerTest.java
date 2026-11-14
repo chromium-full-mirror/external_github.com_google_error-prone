@@ -1160,6 +1160,59 @@ public class Test {
   }
 
   @Test
+  public void compatibleConstructors() {
+    compilationHelper
+        .addSourceLines(
+            "Test.java",
+            """
+            package test;
+
+            import com.google.errorprone.annotations.CompileTimeConstant;
+            import java.math.BigDecimal;
+            import java.math.BigInteger;
+            import java.math.MathContext;
+            import java.math.RoundingMode;
+            import java.util.Locale;
+            import java.util.UUID;
+
+            public class Test {
+              @CompileTimeConstant final BigInteger bigInt = new BigInteger("12345");
+              @CompileTimeConstant final BigDecimal bigDec =
+                  new BigDecimal("12.34", new MathContext(10, RoundingMode.HALF_UP));
+
+              public static void acceptObject(@CompileTimeConstant Object obj) {}
+
+              public static void testSuccess(@CompileTimeConstant final String constStr) {
+                acceptObject(new String());
+                acceptObject(new String(constStr));
+                acceptObject(new Integer(42));
+                acceptObject(new BigInteger("ff", 16));
+                acceptObject(new BigDecimal(100L));
+                acceptObject(new Locale("en", "US"));
+                acceptObject(new UUID(0L, 1L));
+              }
+
+              public static void testFailure(
+                  String nonConstStr, @CompileTimeConstant final char[] constCharArray) {
+                // BUG: Diagnostic contains: Non-compile-time constant expression passed
+                acceptObject(new String(nonConstStr));
+                // BUG: Diagnostic contains: Non-compile-time constant expression passed
+                acceptObject(new String(constCharArray));
+                // BUG: Diagnostic contains: Non-compile-time constant expression passed
+                acceptObject(new BigInteger(nonConstStr));
+                // BUG: Diagnostic contains: Non-compile-time constant expression passed
+                acceptObject(new BigInteger("123") {});
+                // BUG: Diagnostic contains: Non-compile-time constant expression passed
+                acceptObject(new BigDecimal(BigInteger.ONE));
+                // BUG: Diagnostic contains: Non-compile-time constant expression passed
+                acceptObject(new Object());
+              }
+            }
+            """)
+        .doTest();
+  }
+
+  @Test
   public void compatibleFields() {
     compilationHelper
         .addSourceLines(
